@@ -1,32 +1,85 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-entity mux2to1_5bit is
+entity cla_32bit is
     port(
-        sel     :   in std_logic;
-        d_in0   :   in std_logic_vector(4 downto 0);
-        d_in1   :   in std_logic_vector(4 downto 0);
-        d_out   :   out std_logic_vector(4 downto 0)
+        a_in            :   in std_logic_vector(31 downto 0);
+        b_in            :   in std_logic_vector(31 downto 0);
+        c_in            :   in std_logic;
+        sum_out         :   out std_logic_vector(31 downto 0);
+        c_out           :   out std_logic;
+        zero_flag       :   out std_logic;
+        overflow_flag   :   out std_logic
     );
-end mux2to1_5bit;
+end cla_32bit;
 
-architecture structural of mux2to1_5bit is
-    signal not_sel  : std_logic;
-    signal sel_in0  : std_logic_vector(4 downto 0);
-    signal sel_in1  : std_logic_vector(4 downto 0);
+architecture structural of cla_32bit is
+    component cla_8bit is
+        port(
+            a_in            :   in std_logic_vector(7 downto 0);
+            b_in            :   in std_logic_vector(7 downto 0);
+            c_in            :   in std_logic;
+            sum_out         :   out std_logic_vector(7 downto 0);
+            c_out           :   out std_logic;
+            zero_flag       :   out std_logic;
+            overflow_flag   :   out std_logic
+        );
+    end component;
+
+    signal carry_int        : std_logic_vector(4 downto 0);
+    signal sum_int          : std_logic_vector(31 downto 0);
+    signal zero_flag_int    : std_logic_vector(3 downto 0);
+    signal overflow_flag_int: std_logic_vector(3 downto 0);
 
     begin
-    not_sel <= NOT(sel);
+    carry_int(0) <= c_in;
 
-    loop0: for i in 0 to 4 generate
-        sel_in0(i) <= d_in0(i) AND not_sel;
-    end generate;
-
-    loop1: for i in 0 to 4 generate
-        sel_in1(i) <= d_in1(i) AND sel;
-    end generate;
-
-    loop2: for i in 0 to 4 generate
-        d_out(i) <= sel_in0(i) OR sel_in1(i);
-    end generate;
+    CLA0: cla_8bit
+        port map(
+            a_in            => a_in(7 downto 0),
+            b_in            => b_in(7 downto 0),
+            c_in            => carry_int(0),
+            sum_out         => sum_int(7 downto 0),
+            c_out           => carry_int(1),
+            zero_flag       => zero_flag_int(0),
+            overflow_flag   => overflow_flag_int(0)
+        );
+    
+    CLA1: cla_8bit
+        port map(
+            a_in            => a_in(15 downto 8),
+            b_in            => b_in(15 downto 8),
+            c_in            => carry_int(1),
+            sum_out         => sum_int(15 downto 8),
+            c_out           => carry_int(2),
+            zero_flag       => zero_flag_int(1),
+            overflow_flag   => overflow_flag_int(1)
+        );
+    
+    CLA2: cla_8bit
+        port map(
+            a_in            => a_in(23 downto 16),
+            b_in            => b_in(23 downto 16),
+            c_in            => carry_int(2),
+            sum_out         => sum_int(23 downto 16),
+            c_out           => carry_int(3),
+            zero_flag       => zero_flag_int(2),
+            overflow_flag   => overflow_flag_int(2)
+        );
+    
+    CLA3: cla_8bit
+        port map(
+            a_in            => a_in(31 downto 24),
+            b_in            => b_in(31 downto 24),
+            c_in            => carry_int(3),
+            sum_out         => sum_int(31 downto 24),
+            c_out           => carry_int(4),
+            zero_flag       => zero_flag_int(3),
+            overflow_flag   => overflow_flag_int(3)
+        );
+    
+    sum_out <= sum_int;
+    c_out <= carry_int(4);
+    zero_flag <= zero_flag_int(0) AND zero_flag_int(1) AND zero_flag_int(2) AND zero_flag_int(3);
+    overflow_flag <= overflow_flag_int(3);
 end structural;
